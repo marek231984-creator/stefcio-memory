@@ -1,7 +1,7 @@
 {
   "name": "stefcio-memory",
   "version": "1.0.0",
-  "description": "Pamięć treningowa dla agenta Stefcio",
+  "description": "Pamięć lekcji językowych dla agenta Stefcio",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
