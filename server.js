@@ -122,7 +122,27 @@ app.get("/all-memory", (req, res) => {
     memory
   });
 });
+app.get("/test-save", (req, res) => {
+  const userId = "Marek";
 
+  memory[userId] = {
+    name: "Marek",
+    language: "włoski",
+    level: "A1",
+    last_lesson_topic: "przedstawianie się",
+    what_was_practiced: "mówienie jak się nazywam, skąd jestem i po co uczę się włoskiego",
+    words_to_review: "mi chiamo, sono dalla Polonia, voglio imparare italiano",
+    mistakes_to_review: "wymowa gli, użycie sono",
+    next_lesson_plan: "ćwiczyć zamawianie w restauracji",
+    updated_at: new Date().toISOString()
+  };
+
+  res.json({
+    success: true,
+    message: "Testowa pamięć ucznia została zapisana.",
+    saved: memory[userId]
+  });
+});
 app.listen(PORT, () => {
   console.log(`Stefcio memory API działa na porcie ${PORT}`);
 });
