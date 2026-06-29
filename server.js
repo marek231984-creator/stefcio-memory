@@ -14,135 +14,126 @@ const PORT = process.env.PORT || 3000;
 const memory = {};
 
 app.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "Stefcio memory API działa"
-  });
+res.json({
+status: "ok",
+message: "Stefcio memory API działa"
+});
 });
 
-// ZAPIS PAMIĘCI
-// Agent zapisuje, co i z kim było ćwiczone.
+// ZAPIS PAMIĘCI UCZNIA JĘZYKOWEGO
 app.post("/save-memory", (req, res) => {
-  const data = req.body || {};
+const data = req.body || {};
 
-  const userId =
-    data.user_id ||
-    data.userId ||
-    data.name ||
-    "default_user";
+const userId =
+data.user_id ||
+data.userId ||
+data.name ||
+"default_user";
 
-  memory[userId] = {
-    user_id: userId,
+memory[userId] = {
+user_id: userId,
+name: data.name || userId,
+language: data.language || "",
+level: data.level || "",
+last_lesson_topic: data.last_lesson_topic || "",
+what_was_practiced: data.what_was_practiced || "",
+words_to_review: data.words_to_review || "",
+mistakes_to_review: data.mistakes_to_review || "",
+next_lesson_plan: data.next_lesson_plan || "",
+updated_at: new Date().toISOString()
+};
 
-    // Kto jest użytkownikiem / trenerem
-    name: data.name || userId,
-
-    // Z kim było ćwiczenie
-    person_trained_with: data.person_trained_with || "",
-
-    // Temat ćwiczenia
-    exercise_topic: data.exercise_topic || "",
-
-    // Co dokładnie było ćwiczone
-    what_was_practiced: data.what_was_practiced || "",
-
-    // Notatki po ćwiczeniu
-    notes: data.notes || "",
-
-    // Co Stefcio ma zaproponować następnym razem
-    next_training_plan: data.next_training_plan || "",
-
-    updated_at: new Date().toISOString()
-  };
-
-  res.json({
-    success: true,
-    message: "Pamięć treningu została zapisana.",
-    saved: memory[userId]
-  });
+res.json({
+success: true,
+message: "Pamięć ucznia została zapisana.",
+saved: memory[userId]
+});
 });
 
-// ODCZYT PAMIĘCI
-// Agent pyta, co wcześniej ćwiczył z daną osobą.
+// ODCZYT PAMIĘCI UCZNIA
 app.post("/get-memory", (req, res) => {
-  const data = req.body || {};
+const data = req.body || {};
 
-  const userId =
-    data.user_id ||
-    data.userId ||
-    data.name ||
-    "default_user";
+const userId =
+data.user_id ||
+data.userId ||
+data.name ||
+"default_user";
 
-  const savedMemory = memory[userId];
+const savedMemory = memory[userId];
 
-  if (!savedMemory) {
-    return res.json({
-      found: false,
-      message: "Brak zapisanej pamięci dla tego użytkownika."
-    });
-  }
+if (!savedMemory) {
+return res.json({
+found: false,
+message: "Brak zapisanej pamięci dla tego ucznia."
+});
+}
 
-  res.json({
-    found: true,
-    memory: savedMemory
-  });
+res.json({
+found: true,
+memory: savedMemory
+});
 });
 
-// CZYSZCZENIE PAMIĘCI
-// Opcjonalnie: można usunąć pamięć jednej osoby.
+// CZYSZCZENIE PAMIĘCI UCZNIA
 app.post("/delete-memory", (req, res) => {
-  const data = req.body || {};
+const data = req.body || {};
 
-  const userId =
-    data.user_id ||
-    data.userId ||
-    data.name ||
-    "default_user";
+const userId =
+data.user_id ||
+data.userId ||
+data.name ||
+"default_user";
 
-  if (!memory[userId]) {
-    return res.json({
-      success: false,
-      message: "Nie znaleziono pamięci do usunięcia."
-    });
-  }
+if (!memory[userId]) {
+return res.json({
+success: false,
+message: "Nie znaleziono pamięci do usunięcia."
+});
+}
 
-  delete memory[userId];
+delete memory[userId];
 
-  res.json({
-    success: true,
-    message: "Pamięć została usunięta."
-  });
+res.json({
+success: true,
+message: "Pamięć ucznia została usunięta."
+});
 });
 
 // PODGLĄD CAŁEJ PAMIĘCI
 // Tylko do testów.
 app.get("/all-memory", (req, res) => {
-  res.json({
-    count: Object.keys(memory).length,
-    memory
-  });
+res.json({
+count: Object.keys(memory).length,
+memory
 });
+});
+
+// TESTOWY ZAPIS PAMIĘCI
+// Tylko do testów.
 app.get("/test-save", (req, res) => {
-  const userId = "Marek";
+const userId = "marek_001";
 
-  memory[userId] = {
-    name: "Marek",
-    language: "włoski",
-    level: "A1",
-    last_lesson_topic: "przedstawianie się",
-    what_was_practiced: "mówienie jak się nazywam, skąd jestem i po co uczę się włoskiego",
-    words_to_review: "mi chiamo, sono dalla Polonia, voglio imparare italiano",
-    mistakes_to_review: "wymowa gli, użycie sono",
-    next_lesson_plan: "ćwiczyć zamawianie w restauracji",
-    updated_at: new Date().toISOString()
-  };
+memory[userId] = {
+user_id: userId,
+name: "Marek",
+language: "włoski",
+level: "A1",
+last_lesson_topic: "przedstawianie się",
+what_was_practiced: "mówienie jak się nazywam, skąd jestem i po co uczę się włoskiego",
+words_to_review: "mi chiamo, sono dalla Polonia, voglio imparare italiano",
+mistakes_to_review: "wymowa gli, użycie sono",
+next_lesson_plan: "ćwiczyć zamawianie w restauracji",
+updated_at: new Date().toISOString()
+};
 
-  res.json({
-    success: true,
-    message: "Testowa pamięć ucznia została zapisana.",
-    saved: memory[userId]
-  });
+res.json({
+success: true,
+message: "Testowa pamięć ucznia została zapisana.",
+saved: memory[userId]
 });
+});
+
 app.listen(PORT, () => {
-  console.log(`Stefcio memory API działa na porcie ${PORT}`);
+console.log(`Stefcio memory API działa na porcie ${PORT}`);
 });
