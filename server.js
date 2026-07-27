@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 
@@ -8,132 +9,196 @@ app.use(express.json({ limit: "2mb" }));
 
 const PORT = process.env.PORT || 3000;
 
-// Prosta pamięć w RAM.
-// Dobra do testów.
-// Uwaga: po restarcie serwera pamięć się wyczyści.
-const memory = {};
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    "Brakuje SUPABASE_URL lub SUPABASE_SERVICE_ROLE_KEY."
+  );
+  process.exit(1);
+}
+
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  }
+);
+
+function getUserId(data = {}) {
+  return data.user_id || data.userId || null;
+}
 
 app.get("/", (req, res) => {
-res.json({
-status: "ok",
-message: "Stefcio memory API działa"
-});
-});
-
-// ZAPIS PAMIĘCI UCZNIA JĘZYKOWEGO
-app.post("/save-memory", (req, res) => {
-const data = req.body || {};
-
-const userId =
-data.user_id ||
-data.userId ||
-data.name ||
-"default_user";
-
-memory[userId] = {
-user_id: userId,
-name: data.name || userId,
-language: data.language || "",
-level: data.level || "",
-last_lesson_topic: data.last_lesson_topic || "",
-what_was_practiced: data.what_was_practiced || "",
-words_to_review: data.words_to_review || "",
-mistakes_to_review: data.mistakes_to_review || "",
-next_lesson_plan: data.next_lesson_plan || "",
-updated_at: new Date().toISOString()
-};
-
-res.json({
-success: true,
-message: "Pamięć ucznia została zapisana.",
-saved: memory[userId]
-});
+  res.json({
+    status: "ok",
+    message: "Stefcio memory API działa z Supabase"
+  });
 });
 
-// ODCZYT PAMIĘCI UCZNIA
-app.post("/get-memory", (req, res) => {
-const data = req.body || {};
+// ZAPIS LUB AKTUALIZACJA PAMIĘCI
+app.post("/save-memory", async (req, res) => {
+  try {
+    const data = req.body || {};
+    const userId = getUserId(data);
 
-const userId =
-data.user_id ||
-data.userId ||
-data.name ||
-"default_user";
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: "user_id jest wymagany"
+      });
+    }
 
-const savedMemory = memory[userId];
+    const memoryData = {
+      user_id: userId,
+      name: data.name || "",
+      gender: data.gender || "unknown",
+      language: data.language || "włoski",
+      level: data.level || "",
+      last_lesson_topic: data.last_lesson_topic || "",
+      what_was_practiced: data.what_was_practiced || "",
+      words_to_review: data.words_to_review || "",
+      mistakes_to_review: data.mistakes_to_review || "",
+      next_lesson_plan: data.next_lesson_plan || "",
+      updated_at: new Date().toISOString()
+    };
 
-if (!savedMemory) {
-return res.json({
-found: false,
-message: "Brak zapisanej pamięci dla tego ucznia."
+    const { data: saved, error } = await supabase
+      .from("student_memory")
+      .upsert(memoryData, {
+        onConflict: "user_id"
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Błąd save-memory:", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Nie udało się zapisać pamięci."
+      });
+    }
+
+    console.log(`Zapisano pamięć użytkownika: ${userId}`);
+
+    return res.json({
+      success: true,
+      message: "Pamięć ucznia została zapisana.",
+      saved
+    });
+  } catch (error) {
+    console.error("Nieoczekiwany błąd save-memory:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Wewnętrzny błąd serwera."
+    });
+  }
 });
-}
 
-res.json({
-found: true,
-memory: savedMemory
+// ODCZYT PAMIĘCI
+app.post("/get-memory", async (req, res) => {
+  try {
+    const data = req.body || {};
+    const userId = getUserId(data);
+
+    if (!userId) {
+      return res.status(400).json({
+        found: false,
+        error: "user_id jest wymagany"
+      });
+    }
+
+    const { data: savedMemory, error } = await supabase
+      .from("student_memory")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Błąd get-memory:", error);
+
+      return res.status(500).json({
+        found: false,
+        error: "Nie udało się pobrać pamięci."
+      });
+    }
+
+    if (!savedMemory) {
+      console.log(`Brak pamięci użytkownika: ${userId}`);
+
+      return res.json({
+        found: false,
+        message: "Brak zapisanej pamięci dla tego ucznia."
+      });
+    }
+
+    console.log(`Pobrano pamięć użytkownika: ${userId}`);
+
+    return res.json({
+      found: true,
+      memory: savedMemory
+    });
+  } catch (error) {
+    console.error("Nieoczekiwany błąd get-memory:", error);
+
+    return res.status(500).json({
+      found: false,
+      error: "Wewnętrzny błąd serwera."
+    });
+  }
 });
-});
 
-// CZYSZCZENIE PAMIĘCI UCZNIA
-app.post("/delete-memory", (req, res) => {
-const data = req.body || {};
+// USUNIĘCIE PAMIĘCI
+app.post("/delete-memory", async (req, res) => {
+  try {
+    const data = req.body || {};
+    const userId = getUserId(data);
 
-const userId =
-data.user_id ||
-data.userId ||
-data.name ||
-"default_user";
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: "user_id jest wymagany"
+      });
+    }
 
-if (!memory[userId]) {
-return res.json({
-success: false,
-message: "Nie znaleziono pamięci do usunięcia."
-});
-}
+    const { error } = await supabase
+      .from("student_memory")
+      .delete()
+      .eq("user_id", userId);
 
-delete memory[userId];
+    if (error) {
+      console.error("Błąd delete-memory:", error);
 
-res.json({
-success: true,
-message: "Pamięć ucznia została usunięta."
-});
-});
+      return res.status(500).json({
+        success: false,
+        error: "Nie udało się usunąć pamięci."
+      });
+    }
 
-// PODGLĄD CAŁEJ PAMIĘCI
-// Tylko do testów.
-app.get("/all-memory", (req, res) => {
-res.json({
-count: Object.keys(memory).length,
-memory
-});
-});
+    console.log(`Usunięto pamięć użytkownika: ${userId}`);
 
-// TESTOWY ZAPIS PAMIĘCI
-// Tylko do testów.
-app.get("/test-save", (req, res) => {
-const userId = "marek_001";
+    return res.json({
+      success: true,
+      message: "Pamięć ucznia została usunięta."
+    });
+  } catch (error) {
+    console.error("Nieoczekiwany błąd delete-memory:", error);
 
-memory[userId] = {
-user_id: userId,
-name: "Marek",
-language: "włoski",
-level: "A1",
-last_lesson_topic: "przedstawianie się",
-what_was_practiced: "mówienie jak się nazywam, skąd jestem i po co uczę się włoskiego",
-words_to_review: "mi chiamo, sono dalla Polonia, voglio imparare italiano",
-mistakes_to_review: "wymowa gli, użycie sono",
-next_lesson_plan: "ćwiczyć zamawianie w restauracji",
-updated_at: new Date().toISOString()
-};
-
-res.json({
-success: true,
-message: "Testowa pamięć ucznia została zapisana.",
-saved: memory[userId]
-});
+    return res.status(500).json({
+      success: false,
+      error: "Wewnętrzny błąd serwera."
+    });
+  }
 });
 
 app.listen(PORT, () => {
-console.log(`Stefcio memory API działa na porcie ${PORT}`);
+  console.log(`Stefcio memory API działa na porcie ${PORT}`);
 });
