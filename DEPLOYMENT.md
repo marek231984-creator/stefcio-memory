@@ -1,8 +1,8 @@
 # Stan: przygotowane, NIE wdrożone — 29.09.2026
 
 Produkcja pozostaje na API 2.2, commit c107cc499616d2b035b6febd68e017490179430f.
-GitHub odrzucił tworzenie drzewa plików komunikatem 403 „Resource not accessible
-by integration”. W przeglądarce nie ma zalogowanej sesji GitHub ani WordPress.
+Kod zapisano w GitHub na gałęzi security/learner-context-20260929, w roboczym PR #1.
+Integracja GitHub odmówiła zapisu (403); zapis wykonano przez zalogowany panel GitHub.
 Nie zmieniono działających agentów ani produkcyjnej bazy.
 
 ## Co przygotowano
@@ -61,7 +61,8 @@ wymagany status `test` z workflow `Tests`, rozwiązane dyskusje.
 Ustaw 0 obowiązkowych zatwierdzeń, dopóki repozytorium utrzymuje jedna osoba
 (autor nie może zatwierdzić własnego PR). Sprawdź zielony status CI przed
 włączeniem wymaganego statusu. Nie dodawaj ogólnego bypassu administratora.
-Te ustawienia NIE zostały jeszcze włączone.
+Ochronę main włączono 29.09.2026 (ruleset Ochrona main, ID 24165432).
+Nie dodano wyjątków pozwalających omijać regułę.
 
 ## Dodatkowe ustalenia audytu
 
