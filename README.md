@@ -18,7 +18,7 @@ ZIP wtyczki do przesłania w panelu WordPress.
 - `server.js`, `learner-context.js`: backend wymagający podpisu użytkownika/języka.
 - `wordpress/`: adapter wystawiający kontekst na podstawie sesji WordPress.
 - `test/`, `server.test.js`: testy bez połączenia z produkcją.
-- `.github/workflows/test.yml`: testy dla PR i main; ruleset wymaga osobnej aktywacji.
+- `.github/workflows/test.yml`: testy dla PR i main; aktywna ochrona main wymaga przejścia testów przed scalaniem.
 
 Uruchomienie backendu wymaga istniejących zmiennych SUPABASE_URL,
 SUPABASE_SERVICE_ROLE_KEY i LINGUAI_BACKEND_SECRET w środowisku serwera.
