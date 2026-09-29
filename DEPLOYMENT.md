@@ -21,9 +21,12 @@ Nie zmieniono produkcyjnej bazy. Backend nadal działa jako API 2.2.
   „Pokaż wszędzie”, położenie na lewy dolny róg. Na panelu potwierdzono
   odrzucenie opcjonalnych cookies i ponowne otwarcie banera przyciskiem.
 
-Nie wykonano jeszcze pełnej rozmowy i zapisu przez ElevenLabs ani testu dwóch
-kont na staging. Rozmowę zatrzymano przed zaakceptowaniem warunków nagrywania,
-przechowywania i udostępniania komunikacji dostawcom. API 3.0 nie zostało
+Po wyraźnej zgodzie użytkownika na warunki ElevenLabs wykonano krótką rozmowę
+tekstową w języku chińskim na koncie administratora. Agent zapisał
+„TEST TECHNICZNY 29.09”; po zakończeniu rozmowy i przeładowaniu panelu widoczne
+są temat, powitanie i plan „Powtórka powitania”. Panel pokazuje poziom A0
+(przed testem był nieokreślony). Test dotyczy dotychczasowego API 2.2.
+Nie wykonano testu dwóch kont na staging. API 3.0 nie zostało
 scalone ani wdrożone; nie wolno traktować powyższych kontroli UI jako pełnego
 testu autoryzacji na produkcji.
 
@@ -73,7 +76,7 @@ prywatnego/signed-url dostępu do samej rozmowy ElevenLabs.
 
 Jeżeli token wygasł, trzeba odświeżyć stronę i rozpocząć nową rozmowę. Obecny
 adapter nie ma automatycznego odnawiania podczas trwającej rozmowy.
-W tej sesji nie wykonano testów pełnej rozmowy ElevenLabs ani wdrożenia staging.
+Wykonano opisany wyżej test produkcyjnej rozmowy tekstowej; nie wdrożono staging.
 
 ## Ruleset dla main
 
