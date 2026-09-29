@@ -23,6 +23,17 @@ libxml_use_internal_errors(true);$doc=new DOMDocument();$doc->loadHTML($output);
 $vars=json_decode($doc->getElementsByTagName('elevenlabs-convai')->item(0)->getAttribute('dynamic-variables'),true);
 check($vars['secret__learner_context']===$save,'Save capability must reach widget');
 check(strpos($output,'test-only-secret')===false,'Shared secret must never reach HTML');
+foreach (array('en'=>'angielski','es'=>'hiszpański','it'=>'włoski','zh'=>'chiński') as $code=>$language) {
+    $hooks['pre_do_shortcode_tag'](false,'stefcio_widget');
+    $args['body']=json_encode(array('wp_user_id'=>999,'language'=>$code));
+    $filter($args,'https://stefcio-memory.onrender.com/api/memory/get');
+    $new='<elevenlabs-convai dynamic-variables="'.htmlspecialchars(json_encode(array('wp_user_id'=>'11','language'=>'włoski','memory_found'=>'false')),ENT_QUOTES).'"></elevenlabs-convai>';
+    $out=$render($new,'stefcio_widget');$doc->loadHTML($out);libxml_clear_errors();
+    $v=json_decode($doc->getElementsByTagName('elevenlabs-convai')->item(0)->getAttribute('dynamic-variables'),true);
+    check($v['language']===$language,'New learner must keep selected language');
+    check($v['secret__learner_context']===$GLOBALS['linguai_save_context'][11][$language],'Token must match selected language');
+    check($render($new,'stefcio_widget')===$new,'A later render must not reuse previous capability');
+}
 $uid=0;$blocked=$filter($args,'https://stefcio-memory.onrender.com/api/memory/get');
 check(!isset($blocked['headers']['x-linguai-secret']),'Logged-out request must lose credentials');
 check($render($html,'stefcio_widget')===$html,'Logged-out widget must not receive capability');
