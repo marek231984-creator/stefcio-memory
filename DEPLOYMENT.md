@@ -1,9 +1,31 @@
-# Stan: przygotowane, NIE wdrożone — 29.09.2026
+# Stan: wdrożenie częściowe — 29.09.2026
 
 Produkcja pozostaje na API 2.2, commit c107cc499616d2b035b6febd68e017490179430f.
 Kod zapisano w GitHub na gałęzi security/learner-context-20260929, w roboczym PR #1.
 Integracja GitHub odmówiła zapisu (403); zapis wykonano przez zalogowany panel GitHub.
-Nie zmieniono działających agentów ani produkcyjnej bazy.
+Nie zmieniono produkcyjnej bazy. Backend nadal działa jako API 2.2.
+
+## Wykonane na produkcji
+
+- Adapter podpisu dopisano do aktywnego WPCode 422 z osłoną
+  `function_exists`, zachowując wcześniejszy kod i jego kopię sprzed zmiany.
+- Poprawiono wybór języka pierwszej lekcji: kontekst bierze język z żądania
+  WordPress, zamiast domyślnego włoskiego przy pustej pamięci.
+- Sprawdzono widżety EN, ES, IT i ZH: właściwy agent, język i obecność
+  podpisanego kontekstu. Regresja PHP dla czterech języków przeszła.
+- W istniejącym wspólnym narzędziu ElevenLabs zapisującym pamięć dodano
+  `x-linguai-context` jako zmienną dynamiczną `secret__learner_context`.
+  Istniejący sekret usługi pozostawiono bez zmian.
+- CI dla commitu 16d4ffbcaefa457c1020143803c5648b3489c431 zakończyło się sukcesem.
+- Complianz: zarządzanie zgodą zmieniono z ukrywania na telefonach na
+  „Pokaż wszędzie”, położenie na lewy dolny róg. Na panelu potwierdzono
+  odrzucenie opcjonalnych cookies i ponowne otwarcie banera przyciskiem.
+
+Nie wykonano jeszcze pełnej rozmowy i zapisu przez ElevenLabs ani testu dwóch
+kont na staging. Rozmowę zatrzymano przed zaakceptowaniem warunków nagrywania,
+przechowywania i udostępniania komunikacji dostawcom. API 3.0 nie zostało
+scalone ani wdrożone; nie wolno traktować powyższych kontroli UI jako pełnego
+testu autoryzacji na produkcji.
 
 ## Co przygotowano
 
