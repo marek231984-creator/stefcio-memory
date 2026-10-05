@@ -21,5 +21,7 @@ ZIP wtyczki do przesłania w panelu WordPress.
 - `.github/workflows/test.yml`: testy dla PR i main; aktywna ochrona main wymaga przejścia testów przed scalaniem.
 
 Uruchomienie backendu wymaga istniejących zmiennych SUPABASE_URL,
-SUPABASE_SERVICE_ROLE_KEY i LINGUAI_BACKEND_SECRET w środowisku serwera.
+SUPABASE_SERVICE_ROLE_KEY, LINGUAI_BACKEND_SECRET oraz LINGUAI_CONTEXT_SECRET
+w środowisku serwera. Klucz kontekstu musi mieć co najmniej 32 znaki i być
+inny niż sekret API; ten sam klucz kontekstu ustaw w konfiguracji WordPress.
 Nigdy nie wpisuj ich do repozytorium ani kodu przeglądarki.

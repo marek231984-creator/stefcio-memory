@@ -28,8 +28,9 @@ function validate(body, save=false) {
  if(Object.hasOwn(patch,'gender') && !['','male','female','unknown'].includes(patch.gender)) throw new Error('Nieprawidłowa wartość gender.');
  return {id:userId(body),lang,patch};
 }
-function createApp(db,secret) {
+function createApp(db,secret,contextSecret) {
  if(!secret) throw new Error('Missing backend secret');
+ if(typeof contextSecret !== 'string' || contextSecret.length < 32 || contextSecret === secret) throw new Error('A distinct context signing secret of at least 32 characters is required');
  const app=express();
  app.disable('x-powered-by');
  app.use('/api',(req,res,next)=>{
@@ -42,7 +43,7 @@ function createApp(db,secret) {
  function learnerScope(scope) {
   return (req,res,next)=>{
    let claims;
-   try { claims=verifyContext(req.get('x-linguai-context'),secret,scope); }
+   try { claims=verifyContext(req.get('x-linguai-context'),contextSecret,scope); }
    catch { return res.status(401).json({success:false,error:'Invalid or expired learner context'}); }
    const body=req.body;
    if(!body || Array.isArray(body) || typeof body!=='object') return res.status(400).json({success:false,error:'Invalid request'});
@@ -77,10 +78,10 @@ function createApp(db,secret) {
  return app;
 }
 if(require.main===module){
- const {SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,LINGUAI_BACKEND_SECRET}=process.env;
+ const {SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,LINGUAI_BACKEND_SECRET,LINGUAI_CONTEXT_SECRET}=process.env;
  if(!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY||!LINGUAI_BACKEND_SECRET){console.error('Brakuje wymaganych zmiennych środowiskowych.');process.exit(1);}
  const db=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
- createApp(db,LINGUAI_BACKEND_SECRET).listen(process.env.PORT||3000,()=>console.log('LinguAI Memory API 3.0 ready'));
+ createApp(db,LINGUAI_BACKEND_SECRET,LINGUAI_CONTEXT_SECRET).listen(process.env.PORT||3000,()=>console.log('LinguAI Memory API 3.0 ready'));
 }
 module.exports={createApp,validate};
 

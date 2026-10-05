@@ -50,7 +50,8 @@ wylogowaniu; token odczytu 120 sekund. To świadomy, ograniczony czasowo dostęp
 do pamięci jednego ucznia i jednego języka. Token nie daje dostępu bez drugiego,
 istniejącego sekretu usługi. Nie wolno go umieszczać w URL, logach ani promptach.
 Przechowuj go jako `secret__learner_context` w ElevenLabs.
-Kompromitacja wspólnego sekretu usługi nadal kompromituje tę granicę zaufania.
+Klucz podpisujący LINGUAI_CONTEXT_SECRET jest niezależny od sekretu usługi.
+Nie udostępniaj klucza podpisującego ElevenLabs ani przeglądarce.
 Rozwiązanie nie zastępuje autoryzacji płatnego pakietu, limitów użycia ani
 prywatnego/signed-url dostępu do samej rozmowy ElevenLabs.
 
@@ -58,14 +59,17 @@ prywatnego/signed-url dostępu do samej rozmowy ElevenLabs.
 
 1. Utwórz gałąź i PR, uruchom `npm ci --ignore-scripts && npm test`.
 2. Zainstaluj adapter `wordpress/linguai-learner-context.php` w staging WordPress,
-   jako MU plugin. Korzysta z istniejącego serwerowego nagłówka sekretu; nie
-   wymaga wpisywania klucza do repozytorium.
+   jako MU plugin. W konfiguracji serwerowej WordPress zdefiniuj
+   `LINGUAI_CONTEXT_SECRET`: osobny losowy klucz o co najmniej 32 znakach.
+   Nie zapisuj klucza w repozytorium. Zachowaj istniejący sekret API.
 3. W narzędziu ElevenLabs wywołującym `/api/memory/save` zachowaj
    `x-linguai-secret` jako istniejący sekret usługi i dodaj nagłówek
    `x-linguai-context` typu dynamic variable o wartości `secret__learner_context`.
    Zrób to dla narzędzi używanych przez wszystkie cztery języki. Nie generuj
    wartości tokenu przez LLM ani nie dodawaj jej do promptu.
-4. Na staging uruchom backend API 3.0 z dotychczasowymi zmiennymi serwerowymi.
+4. Na staging uruchom backend API 3.0 z dotychczasowymi zmiennymi serwerowymi
+   oraz `LINGUAI_CONTEXT_SECRET` identycznym jak w WordPress. Musi różnić się
+   od `LINGUAI_BACKEND_SECRET`. Brak, krótka lub taka sama wartość blokuje start.
    Nowy backend celowo odrzuca wszystkie stare wywołania bez podpisu.
 5. Sprawdź dwoma kontami WordPress każdy z czterech języków: odczyt pamięci,
    faktyczna rozmowa, zapis, ponowne otwarcie panelu. Sprawdź podmianę id/języka,
@@ -104,3 +108,10 @@ Dokumentacja:
 - https://elevenlabs.io/docs/eleven-agents/customization/personalization/dynamic-variables
 - https://supabase.com/docs/guides/database/functions
 - https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+
+## Poprawka 05.10.2026 — przygotowanie w PR
+
+CI uruchamia `npm run test:php` i weryfikuje podpisy PHP w Node.
+Testy odrzucają brak klucza, słaby klucz, klucz współdzielony oraz token
+podpisany sekretem API. Produkcyjny adapter WPCode 422 nadal wymaga
+skoordynowanej aktualizacji; ta poprawka kodu nie zmienia konfiguracji produkcji.
