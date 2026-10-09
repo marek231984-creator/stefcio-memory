@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('node:crypto');
+const { verifyContext } = require('./learner-context');
 const { createClient } = require('@supabase/supabase-js');
 const LANGUAGES = {en:'angielski', english:'angielski',angielski:'angielski',es:'hiszpański',spanish:'hiszpański','español':'hiszpański',hiszpanski:'hiszpański','hiszpański':'hiszpański',it:'włoski',italian:'włoski',italiano:'włoski',wloski:'włoski','włoski':'włoski',zh:'chiński', 'zh-cn':'chiński',chinese:'chiński',mandarin:'chiński',chinski:'chiński','chiński':'chiński','chiński mandaryński':'chiński'};
 const FIELDS = ['name','gender','level','last_lesson_topic','what_was_practiced','words_to_review','mistakes_to_review','next_lesson_plan'];
@@ -27,8 +28,9 @@ function validate(body, save=false) {
  if(Object.hasOwn(patch,'gender') && !['','male','female','unknown'].includes(patch.gender)) throw new Error('Nieprawidłowa wartość gender.');
  return {id:userId(body),lang,patch};
 }
-function createApp(db,secret) {
+function createApp(db,secret,contextSecret) {
  if(!secret) throw new Error('Missing backend secret');
+ if(typeof contextSecret !== 'string' || contextSecret.length < 32 || contextSecret === secret) throw new Error('A distinct context signing secret of at least 32 characters is required');
  const app=express();
  app.disable('x-powered-by');
  app.use('/api',(req,res,next)=>{
@@ -37,20 +39,34 @@ function createApp(db,secret) {
   res.set('Cache-Control','no-store'); next();
  });
  app.use(express.json({limit:'128kb'}));
- app.get('/',(req,res)=>res.json({status:'ok',service:'LinguAI Memory API',version:'2.2'}));
- app.post('/api/memory/get',async(req,res)=>{
+ app.get('/',(req,res)=>res.json({status:'ok',service:'LinguAI Memory API',version:'3.0'}));
+ function learnerScope(scope) {
+  return (req,res,next)=>{
+   let claims;
+   try { claims=verifyContext(req.get('x-linguai-context'),contextSecret,scope); }
+   catch { return res.status(401).json({success:false,error:'Invalid or expired learner context'}); }
+   const body=req.body;
+   if(!body || Array.isArray(body) || typeof body!=='object') return res.status(400).json({success:false,error:'Invalid request'});
+   // Reject conflicting aliases independently; never silently prioritize one identity.
+   for(const key of ['wp_user_id','wpUserId']) if(Object.hasOwn(body,key) && userId({wp_user_id:body[key]})!==claims.sub)
+    return res.status(403).json({success:false,error:'Learner context mismatch'});
+   if(Object.hasOwn(body,'language') && language(body.language)!==claims.language)
+    return res.status(403).json({success:false,error:'Learner context mismatch'});
+   req.body={...body,wp_user_id:claims.sub,language:claims.language};
+   next();
+  };
+ }
+ app.post('/api/memory/get',learnerScope('memory:get'),async(req,res)=>{
   let input;try {input=validate(req.body);}catch(e){return res.status(400).json({found:false,error:e.message});}
   try {
    let query=db.from('student_memory').select(SELECT).eq('wp_user_id',input.id);
    if(input.lang) query=query.eq('language',input.lang);
-   // Legacy WordPress callers without language receive the most recent memory.
-   // All new callers must pass language for deterministic isolation.
    const {data,error}=await query.order('updated_at',{ascending:false,nullsFirst:false}).limit(1).maybeSingle();
    if(error) throw error;
    return res.json(data?{found:true,memory:data}:{found:false,wp_user_id:input.id,language:input.lang});
   }catch(e){console.error('memory/get failed',e.code||'database_error');return res.status(503).json({found:false,error:'Pamięć jest chwilowo niedostępna. Spróbuj ponownie.'});}
  });
- app.post('/api/memory/save',async(req,res)=>{
+ app.post('/api/memory/save',learnerScope('memory:save'),async(req,res)=>{
   let input;try {input=validate(req.body,true);}catch(e){return res.status(400).json({success:false,error:e.message});}
   try {
    const {data,error}=await db.rpc('linguai_save_memory',{p_wp_user_id:input.id,p_language:input.lang,p_patch:input.patch});
@@ -62,9 +78,10 @@ function createApp(db,secret) {
  return app;
 }
 if(require.main===module){
- const {SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,LINGUAI_BACKEND_SECRET}=process.env;
+ const {SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,LINGUAI_BACKEND_SECRET,LINGUAI_CONTEXT_SECRET}=process.env;
  if(!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY||!LINGUAI_BACKEND_SECRET){console.error('Brakuje wymaganych zmiennych środowiskowych.');process.exit(1);}
  const db=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
- createApp(db,LINGUAI_BACKEND_SECRET).listen(process.env.PORT||3000,()=>console.log('LinguAI Memory API 2.2 ready'));
+ createApp(db,LINGUAI_BACKEND_SECRET,LINGUAI_CONTEXT_SECRET).listen(process.env.PORT||3000,()=>console.log('LinguAI Memory API 3.0 ready'));
 }
 module.exports={createApp,validate};
+

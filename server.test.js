@@ -15,14 +15,21 @@ test('API authenticates before writes and scopes reads',async()=>{
  const writes=[],filters=[];
  const query={select(){return this},eq(k,v){filters.push([k,v]);return this},order(){return this},limit(){return this},async maybeSingle(){return{data:null,error:null}}};
  const db={from(){return query},async rpc(name,args){writes.push(args);return{data:{wp_user_id:args.p_wp_user_id,language:args.p_language,...args.p_patch},error:null}}};
- const server=createApp(db,'test-only-secret').listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ const server=createApp(db,'test-only-secret','test-only-signing-key-at-least-32-characters').listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  const url='http://127.0.0.1:'+server.address().port;
- const call=(path,body,auth=true)=>fetch(url+path,{method:'POST',headers:{'content-type':'application/json',...(auth?{'x-linguai-secret':'test-only-secret'}:{})},body:JSON.stringify(body)});
+ const context=(body,path)=>{
+  const crypto=require('node:crypto'), now=Math.floor(Date.now()/1000);
+  const langs={en:'angielski',es:'hiszpański',it:'włoski',zh:'chiński'};
+  const payload=Buffer.from(JSON.stringify({v:1,iss:'https://linguai.pl',aud:'linguai-memory',sub:body.wp_user_id,language:langs[body.language]||'włoski',scope:path.endsWith('/get')?'memory:get':'memory:save',iat:now,exp:now+120})).toString('base64url');
+  return payload+'.'+crypto.createHmac('sha256','test-only-signing-key-at-least-32-characters').update('linguai-learner-v1.'+payload).digest('base64url');
+ };
+ const call=(path,body,auth=true)=>fetch(url+path,{method:'POST',headers:{'content-type':'application/json',...(auth?{'x-linguai-secret':'test-only-secret','x-linguai-context':context(body,path)}:{})},body:JSON.stringify(body)});
  try{
   assert.equal((await call('/api/memory/save',{wp_user_id:1,language:'en'},false)).status,401);assert.equal(writes.length,0);
-  assert.equal((await call('/api/memory/save',{wp_user_id:1})).status,400);assert.equal(writes.length,0);
+  assert.equal((await call('/api/memory/save',{wp_user_id:1,language:'invalid'})).status,403);assert.equal(writes.length,0);
   for(const lang of ['en','es','it','zh']) assert.equal((await call('/api/memory/save',{wp_user_id:1,language:lang,level:'A0'})).status,200);
   assert.deepEqual(writes.map(x=>x.p_language),['angielski','hiszpański','włoski','chiński']);
   const response=await call('/api/memory/get',{wp_user_id:2,language:'es'});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.deepEqual(filters,[['wp_user_id',2],['language','hiszpański']]);
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+
