@@ -43,8 +43,9 @@ add_filter('http_request_args', function ($args, $url) {
             if (strtolower($name)==='x-linguai-secret' && is_string($value)) { $secret=$value; }
         }
     }
+    $signing_secret = defined('LINGUAI_CONTEXT_SECRET') ? LINGUAI_CONTEXT_SECRET : '';
     $language = is_array($body) ? linguai_context_language($body['language'] ?? 'it') : null;
-    if (!$uid || !$secret || !$language || !is_array($body)) {
+    if (!$uid || !$secret || !$language || !is_array($body) || !is_string($signing_secret) || strlen($signing_secret) < 32 || $signing_secret === $secret) {
         // Deliberately unauthenticated: the API must reject this request.
         $args['headers'] = array('Content-Type'=>'application/json');
         return $args;
@@ -53,9 +54,9 @@ add_filter('http_request_args', function ($args, $url) {
     unset($body['wpUserId']);
     $body['language'] = $language;
     $args['body'] = wp_json_encode($body);
-    $args['headers']['x-linguai-context'] = linguai_context_sign($uid,$language,'memory:get',$secret);
+    $args['headers']['x-linguai-context'] = linguai_context_sign($uid,$language,'memory:get',$signing_secret);
     // Only a bounded save capability reaches the learner's browser, never the shared secret.
-    $GLOBALS['linguai_save_context'][$uid][$language] = linguai_context_sign($uid,$language,'memory:save',$secret);
+    $GLOBALS['linguai_save_context'][$uid][$language] = linguai_context_sign($uid,$language,'memory:save',$signing_secret);
     $GLOBALS['linguai_render_context'] = array('uid'=>$uid,'language'=>$language,
         'token'=>$GLOBALS['linguai_save_context'][$uid][$language]);
     return $args;
