@@ -16,4 +16,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: php -v && php -r 'if (!class_exists("DOMDocument")) { exit(1); }'
       - run: npm test
+      - run: npm run test:php
