@@ -1,6 +1,7 @@
 <?php
 // Standalone adapter test: php test/wordpress-adapter.php. No WordPress/network access.
 define('ABSPATH', '/');
+if (getenv('LINGUAI_TEST_KEY') !== 'missing') { define('LINGUAI_CONTEXT_SECRET', getenv('LINGUAI_TEST_KEY') ?: 'test-only-signing-key-at-least-32-characters'); }
 $hooks = array(); $uid = 11;
 function add_filter($name,$callback,$priority=10,$args=1) { $GLOBALS['hooks'][$name]=$callback; }
 function add_action($name,$callback,$priority=10,$args=1) { $GLOBALS['hooks'][$name]=$callback; }
@@ -13,6 +14,11 @@ require __DIR__.'/../wordpress/linguai-learner-context.php';
 $filter=$hooks['http_request_args'];
 $args=array('headers'=>array('x-linguai-secret'=>'test-only-secret'),'body'=>json_encode(array('wp_user_id'=>999,'language'=>'zh')));
 $result=$filter($args,'https://stefcio-memory.onrender.com/api/memory/get');
+if (getenv('LINGUAI_TEST_KEY')) {
+ check(!isset($result['headers']['x-linguai-secret']) && !isset($result['headers']['x-linguai-context']), 'Invalid signing key must fail closed');
+ check(empty($GLOBALS['linguai_render_context']), 'Invalid key must not create widget capability');
+ echo "Invalid key rejected\n"; exit;
+}
 $body=json_decode($result['body'],true);
 check($body['wp_user_id']===11 && $body['language']==='chiński','Identity must come from WordPress');
 $read=$result['headers']['x-linguai-context'];
@@ -23,6 +29,8 @@ libxml_use_internal_errors(true);$doc=new DOMDocument();$doc->loadHTML($output);
 $vars=json_decode($doc->getElementsByTagName('elevenlabs-convai')->item(0)->getAttribute('dynamic-variables'),true);
 check($vars['secret__learner_context']===$save,'Save capability must reach widget');
 check(strpos($output,'test-only-secret')===false,'Shared secret must never reach HTML');
+check(strpos($output,LINGUAI_CONTEXT_SECRET)===false,'Signing secret must never reach HTML');
+check($result['headers']['x-linguai-secret']==='test-only-secret','API key must stay separate');
 foreach (array('en'=>'angielski','es'=>'hiszpański','it'=>'włoski','zh'=>'chiński') as $code=>$language) {
     $hooks['pre_do_shortcode_tag'](false,'stefcio_widget');
     $args['body']=json_encode(array('wp_user_id'=>999,'language'=>$code));
